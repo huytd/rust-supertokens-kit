@@ -6,7 +6,7 @@ use axum::{
     response::{IntoResponse, Redirect},
     routing, Json, RequestPartsExt, Router, TypedHeader,
 };
-use axum_sessions::async_session::{chrono::NaiveDateTime, CookieStore, Session, SessionStore};
+use axum_sessions::async_session::{CookieStore, Session, SessionStore};
 use cookie::{time::OffsetDateTime, CookieBuilder};
 use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Postgres};
