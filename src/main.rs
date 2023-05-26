@@ -11,6 +11,7 @@ use cookie::{time::OffsetDateTime, CookieBuilder};
 use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Postgres};
 use std::{collections::HashMap, net::SocketAddr, time::Duration};
+use tower_http::services::ServeDir;
 use uuid::Uuid;
 
 type DbPool = Pool<Postgres>;
@@ -72,11 +73,11 @@ async fn main() {
     };
 
     let app = Router::new()
-        .route("/", routing::get(index_handler))
         .route("/auth/me", routing::get(auth_user_info_handler))
         .route("/auth/google/login", routing::get(auth_login_handler))
         .route("/auth/google/callback", routing::get(auth_callback_handler))
         .route("/auth/logout", routing::get(auth_logout_handler))
+        .nest_service("/", ServeDir::new("public"))
         .with_state(state);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3030));
@@ -145,10 +146,6 @@ where
             email: user_info.email.unwrap_or(String::new()),
         })
     }
-}
-
-async fn index_handler() -> impl IntoResponse {
-    "Status: OK"
 }
 
 async fn auth_login_handler(State(state): State<ServerState>) -> impl IntoResponse {
