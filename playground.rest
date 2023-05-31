@@ -1,0 +1,65 @@
+### Register with an existing user
+POST http://localhost:3030/auth/register
+Content-Type: application/json
+
+{
+    "name": "Huy Tran",
+    "email": "kingbazoka@gmail.com",
+    "password": "pA33w0r4"
+}
+
+### Register with a new user
+POST http://localhost:3030/auth/register
+Content-Type: application/json
+
+{
+    "name": "Huy Tran",
+    "email": "kingbazoka+{{$randomInt 0 1000}}@gmail.com",
+    "password": "pA33w0r4"
+}
+
+### Register with an invalid payload
+POST http://localhost:3030/auth/register
+Content-Type: application/json
+
+{
+    "name": "Huy Tran",
+    "email": "kingbazoka+{{$randomInt 0 1000}}@gmail.com",
+    "password": ""
+}
+
+### Login with non-existent user
+POST http://localhost:3030/auth/login
+Content-Type: application/json
+
+{
+    "email": "kingbazoka+nonexist@gmail.com",
+    "password": "non-exist"
+}
+
+### Login with invalid payload
+POST http://localhost:3030/auth/login
+Content-Type: application/json
+
+{
+    "email": "kingbazoka+251@gmail.com",
+    "password": ""
+}
+
+### Login with incorrect password
+POST http://localhost:3030/auth/login
+Content-Type: application/json
+
+{
+    "email": "kingbazoka+251@gmail.com",
+    "password": "pepe"
+}
+
+### Login with correct password
+POST http://localhost:3030/auth/login
+Content-Type: application/json
+
+{
+    "email": "kingbazoka+251@gmail.com",
+    "password": "pA33w0r4"
+}

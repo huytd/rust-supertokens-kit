@@ -1,3 +1,4 @@
+use argon2::{password_hash::SaltString, Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use axum::{
     async_trait,
     extract::{FromRef, FromRequestParts, Query, State},
@@ -8,11 +9,20 @@ use axum::{
 };
 use axum_sessions::async_session::{Session, SessionStore};
 use cookie::{time::OffsetDateTime, CookieBuilder};
+use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, time::Duration};
 use uuid::Uuid;
 
 use crate::{DbPool, ServerState};
+
+#[derive(Debug, Deserialize)]
+struct UserPasswordRequest {
+    email: String,
+    password: String,
+    #[serde(default)]
+    name: String,
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UserInfo {
@@ -103,7 +113,7 @@ where
     }
 }
 
-async fn login_handler(State(state): State<ServerState>) -> impl IntoResponse {
+async fn google_login_handler(State(state): State<ServerState>) -> impl IntoResponse {
     // Step 1: Generate a random CRSF token, store it to the session storage
     let security_token: String = Uuid::new_v4().to_string();
     let mut auth_session = Session::new();
@@ -137,7 +147,7 @@ async fn login_handler(State(state): State<ServerState>) -> impl IntoResponse {
     (headers, Redirect::to(&url))
 }
 
-async fn callback_handler(
+async fn google_callback_handler(
     Query(param): Query<HashMap<String, String>>,
     State(state): State<ServerState>,
     TypedHeader(cookie): TypedHeader<Cookie>,
@@ -298,10 +308,92 @@ async fn user_info_handler(user_info: UserInfo) -> impl IntoResponse {
     Json(user_info)
 }
 
+async fn validate_user_password_request(payload: &UserPasswordRequest) -> Result<(), StatusCode> {
+    if payload.email.is_empty() || payload.password.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+    Ok(())
+}
+
+fn create_password_hasher() -> Result<Argon2<'static>, StatusCode> {
+    let pepper = env!("BASE_SECRET_KEY");
+    let argon2 = Argon2::new_with_secret(
+        pepper.as_bytes(),
+        argon2::Algorithm::Argon2id,
+        argon2::Version::V0x13,
+        argon2::Params::default(),
+    )
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    Ok(argon2)
+}
+
+async fn register_handler(
+    State(state): State<ServerState>,
+    Json(payload): Json<UserPasswordRequest>,
+) -> Result<impl IntoResponse, StatusCode> {
+    validate_user_password_request(&payload).await?;
+
+    // Step 1: Check if the user already exists
+    let user_count = sqlx::query!("SELECT count(*) FROM users WHERE email = $1", payload.email)
+        .fetch_one(&state.db_pool)
+        .await
+        .unwrap()
+        .count
+        .unwrap_or(0);
+    if user_count != 0 {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+    // Step 2: Hash the password
+    let salt = SaltString::generate(&mut OsRng);
+    let argon2 = create_password_hasher()?;
+    let hash = argon2
+        .hash_password(payload.password.as_bytes(), &salt)
+        .unwrap();
+    // Step 3: Save the user to database
+    let _ = sqlx::query!(
+        "INSERT INTO users (email, password_hash, name) VALUES ($1, $2, $3)",
+        payload.email,
+        hash.to_string(),
+        payload.name,
+    )
+    .execute(&state.db_pool)
+    .await
+    .unwrap();
+    Ok(StatusCode::CREATED)
+}
+
+async fn login_handler(
+    State(state): State<ServerState>,
+    Json(payload): Json<UserPasswordRequest>,
+) -> Result<impl IntoResponse, StatusCode> {
+    validate_user_password_request(&payload).await?;
+
+    let user_record = sqlx::query!("SELECT * FROM users WHERE email = $1", payload.email)
+        .fetch_one(&state.db_pool)
+        .await
+        .map_err(|_| StatusCode::UNAUTHORIZED)?;
+
+    let user_password = user_record.password_hash.unwrap_or(String::new());
+    let stored_hash = PasswordHash::new(&user_password).map_err(|_| StatusCode::UNAUTHORIZED)?;
+    let argon2 = create_password_hasher()?;
+    if argon2
+        .verify_password(payload.password.as_bytes(), &stored_hash)
+        .is_err()
+    {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+
+    Ok(StatusCode::OK)
+}
+
+// TODO: Password reset flow
+
 pub fn router() -> Router<ServerState> {
     Router::new()
         .route("/me", routing::get(user_info_handler))
-        .route("/google/login", routing::get(login_handler))
-        .route("/google/callback", routing::get(callback_handler))
+        .route("/register", routing::post(register_handler))
+        .route("/login", routing::post(login_handler))
+        .route("/google/login", routing::get(google_login_handler))
+        .route("/google/callback", routing::get(google_callback_handler))
         .route("/logout", routing::get(logout_handler))
 }
