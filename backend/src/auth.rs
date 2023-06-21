@@ -29,7 +29,8 @@ pub async fn verify_session<B>(mut req: Request<B>, next: Next<B>) -> Result<Res
         .headers()
         .get(header::AUTHORIZATION)
         .and_then(|header| header.to_str().ok())
-        .ok_or(StatusCode::UNAUTHORIZED)?;
+        .ok_or(StatusCode::UNAUTHORIZED)?
+        .replace("Bearer ", "");
     let keystore = JWKS_KEYSTORE
         .get()
         .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;

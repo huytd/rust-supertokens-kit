@@ -3,14 +3,17 @@ use axum::{
     http::{Request, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Response},
-    routing, Router,
+    routing, Json, Router,
 };
+use serde_json::json;
 use std::net::SocketAddr;
 
 mod auth;
 
 async fn hello_handler() -> impl IntoResponse {
-    "OK"
+    Json::from(json!({
+        "hello": true
+    }))
 }
 
 #[tokio::main]
