@@ -1,0 +1,15 @@
+[package]
+name = "backend"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+axum = { version = "0.6.18", features = [ "headers" ] }
+dotenv = "0.15.0"
+jwksclient2 = "0.2.0"
+serde = "1.0.164"
+serde_derive = "1.0.164"
+serde_json = "1.0.97"
+tokio = { version = "1.28.2", features = [ "full" ] }
