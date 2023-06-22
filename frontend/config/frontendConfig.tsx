@@ -17,6 +17,17 @@ export let frontendConfig = () => {
                         ThirdPartyEmailPasswordReact.Github.init(),
                     ],
                 },
+                onHandleEvent: async (context) => {
+                    if (context.action === 'SUCCESS' && context.isNewUser) {
+                        await fetch('/api/v1/user/onboarding', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(context.user)
+                        });
+                    }
+                }
             }),
             SessionReact.init({
                 tokenTransferMethod: 'header'

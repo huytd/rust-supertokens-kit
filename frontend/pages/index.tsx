@@ -23,7 +23,7 @@ function ProtectedPage() {
     }
 
     async function fetchUserData() {
-        const res = await fetch("/api/v1/hello");
+        const res = await fetch("/api/v1/user/me");
         if (res.status === 200) {
             const json = await res.json();
             alert(JSON.stringify(json));
