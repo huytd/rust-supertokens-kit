@@ -2,6 +2,8 @@
 
 A base template to build web application with Rust.
 
+![image](https://github.com/huytd/rustbase/assets/613943/9d4158b8-2fc9-4590-a520-b2e005d7bcdd)
+
 Tech stack:
 - SuperTokens Core (for authentication)
 - Postgres
