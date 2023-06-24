@@ -14,7 +14,6 @@ export let frontendConfig = () => {
                 signInAndUpFeature: {
                     providers: [
                         ThirdPartyEmailPasswordReact.Google.init(),
-                        ThirdPartyEmailPasswordReact.Github.init(),
                     ],
                 },
                 onHandleEvent: async (context) => {
